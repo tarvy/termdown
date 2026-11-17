@@ -11,6 +11,7 @@ public final class RasterFrameSource: FrameSource {
   public var editorPicker: EditorPickerContent?
   public var agentPicker: AgentPickerContent?
   public var marksList: MarksListContent?
+  public var noteDialog: NoteDialogContent?
 
   public init(rasterizer: Rasterizer, overlay: RenderOverlay = RenderOverlay(), status: StatusBarContent? = nil) {
     self.rasterizer = rasterizer
@@ -45,6 +46,11 @@ public final class RasterFrameSource: FrameSource {
       }
       if let marksList {
         MarksList(content: marksList, backingScale: backingScale).draw(
+          palette: rasterizer.palette, in: viewport.contentRect.cgRect, clip: content.cgRect, origin: origin,
+          bitmap: bitmap)
+      }
+      if let noteDialog {
+        NoteDialog(content: noteDialog, backingScale: backingScale).draw(
           palette: rasterizer.palette, in: viewport.contentRect.cgRect, clip: content.cgRect, origin: origin,
           bitmap: bitmap)
       }

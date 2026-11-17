@@ -40,7 +40,7 @@ extension ViewerInteraction {
     case .mouse(let mouse): return handle(mouse: mouse, at: now)
     case .paste(let text) where noteField != nil:
       noteField?.append(text)
-      return [.redrawStatusBar]
+      return [.redrawAll]
     case .paste(let text): return edit == nil ? [] : handleEditing(paste: text, at: now)
     default: return []
     }

@@ -3,6 +3,7 @@ import TermDownCore
 import TermDownRender
 import XCTest
 
+import TermDownRender
 @testable import TermDownInteraction
 
 final class ReviewKeysTests: XCTestCase {
@@ -72,13 +73,18 @@ final class ReviewKeysTests: XCTestCase {
     select("text", in: &h)
     h.key(.char("9"))
     XCTAssertEqual(h.model.noteField, "")
-    XCTAssertEqual(h.model.status.findField, "")
-    XCTAssertEqual(h.model.status.message?.text, "Instruction for this passage:")
+    XCTAssertNil(h.model.status.findField, "the note is typed in a floating dialog, not the status bar")
+    XCTAssertEqual(
+      h.model.noteDialog,
+      NoteDialogContent(
+        title: "Note", prompt: "Instruction for this passage:", excerpt: "text", text: "", color: "#9ca3af"))
     h.keys("say copy")
     h.send(.paste(" instead"))
     h.key(.backspace)
+    XCTAssertEqual(h.model.noteDialog?.text, "say copy instea")
     h.key(.enter)
     XCTAssertNil(h.model.noteField)
+    XCTAssertNil(h.model.noteDialog)
     XCTAssertEqual(marked(h), ["text"])
     XCTAssertEqual(h.model.review.marks.marks.first?.type, "note")
     XCTAssertEqual(h.model.review.marks.marks.first?.note, "say copy instea")

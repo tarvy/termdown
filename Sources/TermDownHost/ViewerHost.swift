@@ -582,6 +582,7 @@ public final class ViewerHost {
     source.editorPicker = interaction.editorPicker
     source.agentPicker = interaction.agentPicker
     source.marksList = interaction.marksList
+    source.noteDialog = interaction.noteDialog
     source.overlay = interaction.overlay
     source.overlay.annotations = reviewAnnotations()
     source.overlay.typedEdits = reviewTypedEdits()
