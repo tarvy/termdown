@@ -1,1 +1,1 @@
-public let termDownVersion = "0.5.0"
+public let termDownVersion = "0.5.1"
