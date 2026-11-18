@@ -1,0 +1,93 @@
+import Foundation
+
+public let editorPaneLabel = "termdown-editor"
+public let changesPaneLabel = "termdown-changes"
+
+public enum BlockState: Equatable, Sendable {
+  case found
+  case notFound
+  case unknown
+}
+
+public enum PaneWaitResult: Equatable, Sendable {
+  case ended
+  case noPayload
+}
+
+private struct RunResult: Decodable {
+  let blockIDs: [String]
+
+  enum CodingKeys: String, CodingKey {
+    case blockIDs = "block_ids"
+  }
+}
+
+public enum RexEditorPane {
+  public static func runArguments(
+    session: String, anchorBlock: String, directory: String, command: [String], split: String = "left"
+  ) -> [String] {
+    [
+      "run", "--json", "--session", session, "--block", anchorBlock, "--split", split, "--ratio", "50",
+      "--label", editorPaneLabel, "--cwd", directory, "--",
+    ] + command
+  }
+
+  /// The changes-since-last-pass pane: a preview of `file` to the right of the review's preview, at 40% of the split,
+  /// with focus left where the person is marking.
+  public static func changesArguments(
+    session: String, anchorBlock: String, directory: String, viewer: String, file: String
+  ) -> [String] {
+    [
+      "run", "--json", "--session", session, "--block", anchorBlock, "--split", "right", "--ratio", "40",
+      "--focus=false", "--label", changesPaneLabel, "--cwd", directory, "--", viewer, "view", file,
+    ]
+  }
+
+  public static func closeArguments(block: String, session: String) -> [String] {
+    ["block", "close", block, "-s", session]
+  }
+
+  public static func focusArguments(block: String) -> [String] {
+    ["focus", block]
+  }
+
+  public static func waitArguments(block: String, session: String) -> [String] {
+    ["wait", block, "-s", session, "--json"]
+  }
+
+  public static func inspectArguments(block: String, session: String) -> [String] {
+    ["block", "inspect", "-s", session, block]
+  }
+
+  public static func blockListArguments(session: String) -> [String] {
+    ["block", "ls", "-s", session, "--json"]
+  }
+
+  public static func blockID(runJSON: Data) -> String? {
+    guard let result = try? JSONDecoder().decode(RunResult.self, from: runJSON),
+      result.blockIDs.count == 1
+    else { return nil }
+    return result.blockIDs.first
+  }
+
+  public static func fallbackBlockID(
+    blockListJSON: Data, excluding known: Set<String>, label: String = editorPaneLabel
+  ) -> String? {
+    guard let list = try? JSONDecoder().decode(BlockList.self, from: blockListJSON) else { return nil }
+    let candidates = list.blocks.filter { $0.label == label && !known.contains($0.blockID) }
+    return candidates.count == 1 ? candidates.first?.blockID : nil
+  }
+
+  public static func classifyWait(stdout: Data) -> PaneWaitResult {
+    guard let payload = try? JSONSerialization.jsonObject(with: stdout) as? [String: Any],
+      !payload.isEmpty
+    else { return .noPayload }
+    return .ended
+  }
+
+  public static func classifyInspect(block: String, status: Int32, stderr: Data) -> BlockState {
+    if status == 0 { return .found }
+    let message = String(decoding: stderr, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+    return status == 3 && message == "Error: block target \"\(block)\" not found" ? .notFound : .unknown
+  }
+}

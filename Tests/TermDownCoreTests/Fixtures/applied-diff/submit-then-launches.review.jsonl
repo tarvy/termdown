@@ -1,0 +1,3 @@
+{"pass": 1, "ts": "2026-09-09T10:00:00", "format": "viewer", "about": null, "action": "go", "draft_snapshot": "Alpha line.\n", "manual_edit_diff": null, "annotations": []}
+{"pass": 0, "pre_review": false, "before_pass": 2, "ts": "2026-09-09T10:05:00", "format": "viewer", "about": null, "event": "launch", "draft_snapshot": "Beta line.\n", "manual_edit_diff": null, "annotations": []}
+{"pass": 0, "pre_review": false, "before_pass": 2, "ts": "2026-09-09T10:05:00", "format": "viewer", "about": null, "event": "launch", "draft_snapshot": "Beta line.\n", "manual_edit_diff": null, "annotations": []}
