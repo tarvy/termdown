@@ -60,8 +60,9 @@ public enum AgentPaneState: Equatable, Sendable {
     return lines[(top + 1)..<bottom]
   }
 
-  /// The screen as lines of cells, or nil when it holds an escape sequence other than SGR (`m`) and cursor-forward
-  /// (`C`), which is all a trimmed capture uses.
+  /// The screen as lines of cells, or nil when it holds an escape sequence other than SGR (`m`), cursor-forward (`C`)
+  /// and OSC 8, which is all a trimmed capture uses. An OSC 8 hyperlink (Claude Code draws a pasted image's
+  /// `[Image #1]` as one) draws nothing itself, so it is dropped; the linked text stays as cells.
   static func parse(_ vt: String) -> [[Cell]]? {
     var lines: [[Cell]] = [[]]
     var faint = false
@@ -69,7 +70,12 @@ public enum AgentPaneState: Equatable, Sendable {
     while let scalar = scalars.popFirst() {
       switch scalar {
       case "\u{1b}":
-        guard scalars.popFirst() == "[" else { return nil }
+        let introducer = scalars.popFirst()
+        if introducer == "]" {
+          guard skipOSC(&scalars) else { return nil }
+          continue
+        }
+        guard introducer == "[" else { return nil }
         var parameters = ""
         var final: Unicode.Scalar?
         while let next = scalars.popFirst() {
@@ -96,6 +102,17 @@ public enum AgentPaneState: Equatable, Sendable {
       }
     }
     return lines
+  }
+
+  /// Drops an OSC 8 hyperlink through its terminator, BEL or ST (`ESC \`). False for any other OSC, or when the screen
+  /// ends first.
+  static func skipOSC(_ scalars: inout Substring.UnicodeScalarView.SubSequence) -> Bool {
+    guard scalars.starts(with: "8;".unicodeScalars) else { return false }
+    while let next = scalars.popFirst() {
+      if next == "\u{7}" { return true }
+      if next == "\u{1b}" { return scalars.popFirst() == "\\" }
+    }
+    return false
   }
 
   /// The faint flag after an SGR sequence. Extended colors (`38;5;n`, `38;2;r;g;b`) are skipped whole, so a `2` in

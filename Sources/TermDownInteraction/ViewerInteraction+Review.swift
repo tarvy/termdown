@@ -220,7 +220,9 @@ extension ViewerInteraction {
     if hotkey.prompt != nil {
       pendingNote = (range, hotkey)
       noteField = ""
-      return [.redrawStatusBar]
+      helpVisible = false
+      overlay.hoverLink = nil
+      return setPointerShape(.default) + [.redrawAll]
     }
     return addMark(range, hotkey: hotkey, note: nil, at: now)
   }
@@ -248,9 +250,9 @@ extension ViewerInteraction {
       noteField = nil
       pendingNote = nil
       noteTargetSeq = nil
-      guard !note.isEmpty, let pending else { return [.redrawStatusBar] }
-      if let target { return setListedNote(seq: target, hotkey: pending.hotkey, note: note, at: now) }
-      return addMark(pending.range, hotkey: pending.hotkey, note: note, at: now)
+      guard !note.isEmpty, let pending else { return [.redrawAll] }
+      if let target { return [.redrawAll] + setListedNote(seq: target, hotkey: pending.hotkey, note: note, at: now) }
+      return [.redrawAll] + addMark(pending.range, hotkey: pending.hotkey, note: note, at: now)
     case .escape:
       noteField = nil
       pendingNote = nil
@@ -260,7 +262,7 @@ extension ViewerInteraction {
     default:
       return []
     }
-    return [.redrawStatusBar]
+    return [.redrawAll]
   }
 
   mutating func removeLastMark(at now: UInt64) -> [InteractionEffect] {
@@ -463,12 +465,12 @@ extension ViewerInteraction {
     return askListedNote(for: mark, hotkey: hotkey)
   }
 
-  /// Opens the status bar's note field for a listed mark; the list stays open underneath.
+  /// Opens the note dialog for a listed mark; the list stays open underneath.
   mutating func askListedNote(for mark: ReviewMark, hotkey: ReviewHotkey) -> [InteractionEffect] {
     pendingNote = (mark.range, hotkey)
     noteTargetSeq = mark.seq
     noteField = mark.note ?? ""
-    return [.redrawStatusBar]
+    return [.redrawAll]
   }
 
   mutating func setListedNote(seq: Int, hotkey: ReviewHotkey, note: String, at now: UInt64) -> [InteractionEffect] {

@@ -210,6 +210,37 @@ struct Glyphs {
     context.strokePath()
   }
 
+  /// A pencil pointing down-left: tip, body and an eraser band.
+  func pencil(in rect: CGRect, color: CGColor) {
+    context.saveGState()
+    defer { context.restoreGState() }
+    let side = min(rect.width, rect.height)
+    strokeStyle(color, width: max(hairline, side * 0.09))
+    let tip = point(rect, 0.1, 0.9)
+    let end = point(rect, 0.9, 0.1)
+    let length = hypot(end.x - tip.x, end.y - tip.y)
+    guard length > 0 else { return }
+    let u = CGPoint(x: (end.x - tip.x) / length, y: (end.y - tip.y) / length)
+    let v = CGPoint(x: -u.y, y: u.x)
+    let half = side * 0.14
+    func at(_ base: CGPoint, along: CGFloat, across: CGFloat) -> CGPoint {
+      CGPoint(x: base.x + u.x * along + v.x * across, y: base.y + u.y * along + v.y * across)
+    }
+    let cone = side * 0.26
+    context.move(to: tip)
+    context.addLine(to: at(tip, along: cone, across: half))
+    context.addLine(to: at(end, along: 0, across: half))
+    context.addLine(to: at(end, along: 0, across: -half))
+    context.addLine(to: at(tip, along: cone, across: -half))
+    context.closePath()
+    context.move(to: at(tip, along: cone, across: half))
+    context.addLine(to: at(tip, along: cone, across: -half))
+    let band = side * 0.22
+    context.move(to: at(end, along: -band, across: half))
+    context.addLine(to: at(end, along: -band, across: -half))
+    context.strokePath()
+  }
+
   func magnifier(in rect: CGRect, color: CGColor) {
     context.saveGState()
     defer { context.restoreGState() }

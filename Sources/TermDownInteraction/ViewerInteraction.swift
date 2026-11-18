@@ -216,7 +216,6 @@ public struct ViewerInteraction {
     let name = file?.lastPathComponent ?? ""
     let folder = file.map { Self.abbreviatedFolder($0.deletingLastPathComponent().path) }
     var shown = message?.message
-    if noteField != nil, let prompt = pendingNote?.hotkey.prompt { shown = StatusMessage(prompt) }
     if noteField != nil, pendingLink != nil { shown = StatusMessage(Self.linkPrompt) }
     if let confirm { shown = StatusMessage(confirm.prompt) }
     if shown == nil, let findQuery {
@@ -235,7 +234,7 @@ public struct ViewerInteraction {
     return StatusBarContent(
       fileName: name, folder: folder,
       progress: ScrollProgress(offset: offset, viewport: geometry.contentHeight, content: pageHeight),
-      message: shown, hint: hint, findField: findField ?? noteField, editor: editBadge ?? editorBadge,
+      message: shown, hint: hint, findField: findField ?? (pendingLink != nil ? noteField : nil), editor: editBadge ?? editorBadge,
       agent: reviewAgent.connected == 0 ? nil : reviewAgent.title ?? "",
       client: review.isOn ? reviewClient?.name : nil, review: reviewBarContent)
   }
@@ -254,6 +253,20 @@ public struct ViewerInteraction {
         key: $0.key, label: $0.label, short: Self.legendShort[$0.type], color: $0.color.isEmpty ? "#9ca3af" : $0.color)
     }
     return ReviewBarContent(legend: legend, marks: review.marks.count)
+  }
+
+  /// The floating note dialog while a prompting hotkey waits for its note.
+  public var noteDialog: NoteDialogContent? {
+    guard let noteField, pendingLink == nil, let pending = pendingNote else { return nil }
+    let bytes = Array(source.utf8)
+    let range = pending.range.clamped(to: 0..<bytes.count)
+    let excerpt = String(decoding: bytes[range], as: UTF8.self)
+      .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    var title = pending.hotkey.label
+    while let last = title.last, last == "." || last == "\u{2026}" { title.removeLast() }
+    return NoteDialogContent(
+      title: title.isEmpty ? "Note" : title, prompt: pending.hotkey.prompt ?? "", excerpt: excerpt, text: noteField,
+      color: pending.hotkey.color)
   }
 
   public var editorBadge: String? {
