@@ -55,15 +55,19 @@ Coding agents can open Markdown deliverables in a Rex preview pane. Run:
 termdown agents install
 ```
 
-This writes a small skill into each supported agent's skills directory, only where that agent is already installed:
+This writes two small skills, `termdown` and `termdown-review`, into each supported agent's skills directory, only where that agent is already installed:
 
 | Directory | Agents |
 | --- | --- |
-| `~/.claude/skills/termdown/` | Claude Code |
-| `~/.agents/skills/termdown/` | Codex, Pi, OpenCode, Devin CLI |
-| `~/.cursor/skills/termdown/` | cursor-agent |
+| `~/.claude/skills/` | Claude Code |
+| `~/.agents/skills/` | Codex, Pi, OpenCode, Devin CLI |
+| `~/.cursor/skills/` | cursor-agent |
 
-The skill tells the agent to run `termdown open FILE` after it writes or substantially updates a Markdown file for you. The preview opens beside the pane focused in Rex and reuses that tab's preview. The guidance ships in the binary (`termdown agent-guide`), so upgrading TermDown updates it without rewriting the skill.
+`termdown` tells the agent to run `termdown open FILE` after it writes or substantially updates a Markdown file for you. The preview opens beside the pane focused in Rex and reuses that tab's preview.
+
+`termdown-review` starts an interactive review of a draft and applies each pass you send. In Claude Code, `/termdown-review path/to/draft.md` starts one directly; asking to review or mark up a draft in TermDown works too. The skill holds the steps to start a review, so it doesn't depend on the agent picking the right guide, and it tells the agent not to open a browser reviewer instead.
+
+Both skills are personal skills in your home folder, so they work in every project and directory with nothing to add per repository. A new Claude Code session picks them up, or run `/reload-skills` in one that is already open. The detailed guidance ships in the binary (`termdown agent-guide`, `termdown agent-guide review`), so upgrading TermDown updates it without rewriting the skills.
 
 When you ask an agent to change how TermDown edits, it runs `termdown config set editor <command>` or `termdown config set edit-mode split|here` instead of editing `config.json`. Agents do not open editor panes or run `termdown edit` unless you ask. If you save a file an agent is also writing, the agent's next write is refused because the file changed, and it re-reads the file rather than overwriting your saved changes.
 
@@ -192,7 +196,7 @@ Review turns a preview into a markup surface for a draft you are working on with
 
 **Copying a draft for email.** `O` copies the selection, or the whole document when nothing is selected, as rich text: formatted HTML next to the plain text, so it pastes into Outlook with its bold, links, lists and tables and without the front matter. A link to another file, a path or a heading keeps its text but loses the link, since it would point nowhere in an email. It works with review on or off.
 
-**From the agent.** The agent runs `termdown review FILE` to start a review of a draft it wrote. It opens the preview, or reuses the one already showing the file, and turns review on. If no session is connected yet, review starts when one connects. If review is already on for that file, nothing changes and the bar says `Review is already on`. If the preview is showing a different file and you have unsent marks, you are asked before it switches.
+**From the agent.** Run `/termdown-review FILE` in Claude Code, or ask the agent to review the draft in TermDown. The agent runs `termdown review FILE` to start a review of a draft it wrote. It opens the preview, or reuses the one already showing the file, and turns review on. If no session is connected yet, review starts when one connects. If review is already on for that file, nothing changes and the bar says `Review is already on`. If the preview is showing a different file and you have unsent marks, you are asked before it switches.
 
 ## Commands
 
