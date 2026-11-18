@@ -1,8 +1,8 @@
 class Termdown < Formula
   desc "Preview Markdown in Rex terminal panes, paired with your Claude Code agents"
   homepage "https://github.com/tarvy/termdown"
-  url "https://github.com/tarvy/termdown.git", tag: "termdown-v0.5.2", revision: "91da40e31cf0fcdc70ca9085a779e37ab3fe9202"
-  version "0.5.2"
+  url "https://github.com/tarvy/termdown.git", tag: "termdown-v0.5.3", revision: "0637a8013c2d5c87934cf11e894cf2568cb85290"
+  version "0.5.3"
 
   depends_on macos: :sonoma
 
