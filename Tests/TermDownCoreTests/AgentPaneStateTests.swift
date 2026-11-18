@@ -40,6 +40,26 @@ final class AgentPaneStateTests: XCTestCase {
     XCTAssertFalse(AgentPaneState.isRule(AgentPaneState.parse("── not a rule ──")!.first!), "too short a run")
   }
 
+  /// Claude Code draws a pasted image's `[Image #1]` as an OSC 8 hyperlink, and it stays in the history above the
+  /// prompt box for the rest of the session. The link is not text the user typed, so it must not make the pane busy.
+  func testAHyperlinkInTheHistoryIsReady() {
+    let link = "\u{1b}]8;id=ab12;file:///tmp/image.png\u{1b}\\[Image #1]\u{1b}]8;;\u{1b}\\"
+    XCTAssertEqual(AgentPaneState.classify(vt: "\r\n" + link + screen("")), .ready)
+    let belLink = "\u{1b}]8;;file:///tmp/image.png\u{7}[Image #1]\u{1b}]8;;\u{7}"
+    XCTAssertEqual(AgentPaneState.classify(vt: "\r\n" + belLink + screen("")), .ready, "BEL ends an OSC too")
+    XCTAssertEqual(AgentPaneState.parse(link).map { $0.map(AgentPaneState.text) }, ["[Image #1]"])
+  }
+
+  func testAHyperlinkInThePromptIsStillTypedText() {
+    let link = "\u{1b}]8;;file:///tmp/a.png\u{1b}\\[Image #1]\u{1b}]8;;\u{1b}\\"
+    XCTAssertEqual(AgentPaneState.classify(vt: screen(link)), .busy)
+  }
+
+  func testAnUnterminatedOrUnknownEscapeIsStillBusy() {
+    XCTAssertEqual(AgentPaneState.classify(vt: screen("") + "\u{1b}]8;;file:///tmp/a.png"), .busy)
+    XCTAssertEqual(AgentPaneState.classify(vt: "\u{1b}7" + screen("")), .busy)
+  }
+
   func testUnsentTypedTextIsBusy() throws {
     XCTAssertEqual(AgentPaneState.classify(vt: try fixture("typed")), .busy)
   }
