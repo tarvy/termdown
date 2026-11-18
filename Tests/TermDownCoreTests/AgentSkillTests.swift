@@ -172,27 +172,86 @@ final class AgentSkillTests: XCTestCase {
     XCTAssertTrue(lines[2].hasSuffix("/.cursor/skills/termdown (cursor-agent)"))
   }
 
-  func testOfferYesInstalls() {
-    var installed = false
-    let outcome = offerAgentInstall(isInteractive: true, ask: { "y" }, install: { installed = true })
-    XCTAssertEqual(outcome, .installed)
-    XCTAssertTrue(installed)
+  func report(_ parent: String, _ state: AgentSkillState) -> AgentSkillReport {
+    let target = agentSkillTargets.first { $0.parent == parent }!
+    return AgentSkillReport(
+      target: target, state: state, directory: home.appendingPathComponent(target.relativeDirectory))
   }
 
-  func testOfferNoOrBlankDeclines() {
+  func testNamesPickTargets() throws {
+    XCTAssertEqual(try agentSkillTargets(named: []).map(\.parent), [".claude", ".agents", ".cursor"])
+    XCTAssertEqual(try agentSkillTargets(named: ["cursor", "Claude"]).map(\.parent), [".claude", ".cursor"])
+    XCTAssertEqual(try agentSkillTargets(named: ["codex", "pi"]).map(\.parent), [".agents"], "one shared directory")
+    XCTAssertEqual(try agentSkillTargets(named: ["claude-code", "cursor-agent", "devin"]).count, 3)
+  }
+
+  func testAnUnknownNameIsRefusedAndListsTheNames() {
+    XCTAssertThrowsError(try agentSkillTargets(named: ["claude", "vim"])) { error in
+      XCTAssertEqual(error as? UnknownAgentName, UnknownAgentName(name: "vim"))
+      XCTAssertEqual("\(error)", "unknown agent \"vim\"; use claude, codex, cursor")
+    }
+  }
+
+  func testInstallingNamedTargetsLeavesTheOthersAlone() throws {
+    try makeParent(".claude")
+    try makeParent(".cursor")
+    let reports = try AgentSkills(home: home, targets: agentSkillTargets(named: ["cursor"])).install()
+    XCTAssertEqual(reports.map(\.target.parent), [".cursor"])
+    XCTAssertEqual(states(reports), [.installed])
+    XCTAssertFalse(FileManager.default.fileExists(atPath: skillFile(".claude").path))
+  }
+
+  func testOfferPendingIsFoundAgentsWithoutTheCurrentSkill() {
+    let reports = [report(".claude", .current), report(".agents", .skipped), report(".cursor", .outdated)]
+    XCTAssertEqual(agentOfferPending(reports).map(\.target.parent), [".cursor"])
+    XCTAssertEqual(agentOfferPending([report(".claude", .missing), report(".agents", .foreign)]).count, 1)
+  }
+
+  func testOfferQuestionNamesEachAgentAndWhereItGoes() {
+    let question = agentOfferQuestion([report(".claude", .missing), report(".cursor", .outdated)], home: home.path)
+    XCTAssertEqual(
+      question,
+      "Teach these coding agents to use termdown?\n  Claude Code  (~/.claude/skills/termdown)\n"
+        + "  cursor-agent  (~/.cursor/skills/termdown)\n[Y/n] ")
+  }
+
+  func testOfferEnterOrYesInstalls() {
+    for answer in ["", "y", "YES", " y "] {
+      var installed = false
+      let outcome = offerAgentInstall(
+        pending: [report(".claude", .missing)], isInteractive: true, ask: { answer }, install: { installed = true })
+      XCTAssertEqual(outcome, .installed, answer)
+      XCTAssertTrue(installed, answer)
+    }
+  }
+
+  func testOfferNoOrEndOfInputDeclines() {
     var installed = false
-    for answer in ["n", "", nil] as [String?] {
+    for answer in ["n", "no", "later", nil] as [String?] {
       XCTAssertEqual(
-        offerAgentInstall(isInteractive: true, ask: { answer }, install: { installed = true }),
+        offerAgentInstall(
+          pending: [report(".claude", .missing)], isInteractive: true, ask: { answer }, install: { installed = true }),
         .declined)
     }
     XCTAssertFalse(installed)
   }
 
+  func testOfferAsksNothingWhenEveryFoundAgentIsCurrent() {
+    var asked = false
+    let outcome = offerAgentInstall(
+      pending: [], isInteractive: true,
+      ask: {
+        asked = true
+        return "y"
+      }, install: {})
+    XCTAssertEqual(outcome, .upToDate)
+    XCTAssertFalse(asked)
+  }
+
   func testOfferNonInteractiveHintsWithoutAsking() {
     var asked = false
     let outcome = offerAgentInstall(
-      isInteractive: false,
+      pending: [report(".claude", .missing)], isInteractive: false,
       ask: {
         asked = true
         return "y"

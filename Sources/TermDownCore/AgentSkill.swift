@@ -62,20 +62,47 @@ public let agentGuide = """
 public struct AgentSkillTarget: Sendable, Equatable {
   public let agents: String
   public let parent: String
+  /// What `termdown agents install NAME` accepts for this directory, first the name usage shows.
+  public let names: [String]
 
   public var relativeDirectory: String { "\(parent)/skills/termdown" }
 
-  public init(agents: String, parent: String) {
+  public init(agents: String, parent: String, names: [String] = []) {
     self.agents = agents
     self.parent = parent
+    self.names = names
   }
 }
 
 public let agentSkillTargets = [
-  AgentSkillTarget(agents: "Claude Code", parent: ".claude"),
-  AgentSkillTarget(agents: "Codex, Pi, OpenCode, Devin CLI", parent: ".agents"),
-  AgentSkillTarget(agents: "cursor-agent", parent: ".cursor"),
+  AgentSkillTarget(agents: "Claude Code", parent: ".claude", names: ["claude", "claude-code"]),
+  AgentSkillTarget(
+    agents: "Codex, Pi, OpenCode, Devin CLI", parent: ".agents",
+    names: ["codex", "pi", "opencode", "devin", "agents"]),
+  AgentSkillTarget(agents: "cursor-agent", parent: ".cursor", names: ["cursor", "cursor-agent"]),
 ]
+
+/// A name `termdown agents` does not know.
+public struct UnknownAgentName: Error, Equatable, CustomStringConvertible {
+  public let name: String
+  public var description: String {
+    "unknown agent \"\(name)\"; use \(agentSkillTargets.compactMap(\.names.first).joined(separator: ", "))"
+  }
+}
+
+/// The targets the names pick, in the usual order, or every target when there are no names. Codex, Pi, OpenCode and
+/// Devin CLI share one directory, so naming any of them picks it.
+public func agentSkillTargets(named names: [String]) throws -> [AgentSkillTarget] {
+  guard !names.isEmpty else { return agentSkillTargets }
+  var picked = Set<String>()
+  for name in names {
+    guard let target = agentSkillTargets.first(where: { $0.names.contains(name.lowercased()) }) else {
+      throw UnknownAgentName(name: name)
+    }
+    picked.insert(target.parent)
+  }
+  return agentSkillTargets.filter { picked.contains($0.parent) }
+}
 
 public enum AgentSkillState: String, Sendable, Equatable {
   case installed, current, outdated, missing, skipped, foreign
@@ -167,14 +194,34 @@ public enum AgentOfferOutcome: Equatable, Sendable {
   case installed
   case declined
   case hint
+  /// Every agent found already has the current skill, or none was found: nothing was asked.
+  case upToDate
 }
 
+/// The reports `termdown setup` offers to install: agents found on this Mac whose skill is missing or outdated.
+public func agentOfferPending(_ reports: [AgentSkillReport]) -> [AgentSkillReport] {
+  reports.filter { $0.state == .missing || $0.state == .outdated }
+}
+
+/// The setup question, naming each agent it would teach and where the skill goes. Enter means yes.
+public func agentOfferQuestion(_ pending: [AgentSkillReport], home: String) -> String {
+  let lines = pending.map { report in
+    let path = report.directory.path
+    let shown = path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
+    return "  \(report.target.agents)  (\(shown))"
+  }
+  return "Teach these coding agents to use termdown?\n" + lines.joined(separator: "\n") + "\n[Y/n] "
+}
+
+/// Offers the skill to the agents in `pending`. Enter or yes installs; no, anything else or end of input declines.
 public func offerAgentInstall(
-  isInteractive: Bool, ask: () -> String?, install: () -> Void
+  pending: [AgentSkillReport], isInteractive: Bool, ask: () -> String?, install: () -> Void
 ) -> AgentOfferOutcome {
+  guard !pending.isEmpty else { return .upToDate }
   guard isInteractive else { return .hint }
-  let answer = ask()?.trimmingCharacters(in: .whitespaces).lowercased()
-  guard answer == "y" || answer == "yes" else { return .declined }
+  guard let answer = ask()?.trimmingCharacters(in: .whitespaces).lowercased(),
+    ["", "y", "yes"].contains(answer)
+  else { return .declined }
   install()
   return .installed
 }

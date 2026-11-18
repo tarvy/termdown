@@ -83,7 +83,9 @@ Each preview is an IDE that Claude Code can connect to with `/ide`: text you hig
 
 Claude Code pins a session to a preview through `CLAUDE_CODE_SSE_PORT`; the preview identifies each connected session from the process ID Claude Code reports and the `REX_BLOCK` in that process's environment. If a preview closes, its port goes with it: run `/ide` in the session or start it again.
 
-`termdown agents status` shows each directory as current, outdated, missing, skipped or foreign. `termdown agents remove` deletes only skills that TermDown installed. `termdown setup` offers to install them, and `termdown uninstall` removes them.
+To teach only some agents, name them: `termdown agents install claude cursor`. The names are `claude`, `codex` and `cursor`; `pi`, `opencode` and `devin` also pick the shared `~/.agents` directory. `remove` and `status` take the same names, and with none they cover every agent.
+
+`termdown agents status` shows each directory as current, outdated, missing, skipped or foreign. `termdown agents remove` deletes only skills that TermDown installed. `termdown setup` lists the agents it found that don't have the current skill yet and asks once, with Enter meaning yes; when every agent it found is current, it asks nothing. `termdown uninstall` removes them.
 
 ## Editing
 
