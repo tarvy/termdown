@@ -24,8 +24,9 @@ public let commandUsage = """
     setup         Install the handler app and register it
     uninstall     Remove the handler app and restore previous handlers
     doctor        Diagnose the installation
-    agents <install|status|remove>
-                  Manage the coding-agent skill that opens previews
+    agents <install|status|remove> [claude|codex|cursor ...]
+                  Manage the coding-agent skill that opens previews, for every
+                  agent found or only the ones named
     agent-guide [review]
                   Print guidance for coding agents; `review` prints how to
                   start a review and apply a pass.

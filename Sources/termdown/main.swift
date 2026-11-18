@@ -30,7 +30,7 @@ case "setup":
 case "uninstall":
   await SetupCommand.uninstall()
 case "agents":
-  AgentsCommand.run(arguments.count == 2 ? arguments[1] : nil)
+  AgentsCommand.run(Array(arguments.dropFirst()))
 case "claude":
   ClaudeCommand.run(Array(arguments.dropFirst()))
 case "agent-guide":
