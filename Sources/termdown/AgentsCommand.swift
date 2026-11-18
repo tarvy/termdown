@@ -43,12 +43,12 @@ enum AgentsCommand {
       pending: pending,
       isInteractive: isatty(STDIN_FILENO) != 0,
       ask: {
-        print(agentOfferQuestion(pending, home: home.path), terminator: "")
+        print(agentOfferQuestion(pending), terminator: "")
         return readLine()
       },
       install: {
         do {
-          print(agentStatusLines(try skills(pending.map(\.target)).install()).joined(separator: "\n"))
+          print(agentStatusLines(try skills(uniqueTargets(pending)).install()).joined(separator: "\n"))
         } catch {
           FileHandle.standardError.write(Data("agents install failed: \(error)\n".utf8))
         }
@@ -56,6 +56,11 @@ enum AgentsCommand {
     if outcome == .hint {
       print("To teach coding agents to use termdown, run: termdown agents install")
     }
+  }
+
+  /// The agent directories in `pending`, once each and in order.
+  static func uniqueTargets(_ pending: [AgentSkillReport]) -> [AgentSkillTarget] {
+    agentSkillTargets.filter { target in pending.contains { $0.target == target } }
   }
 
   static func removeQuietly() {

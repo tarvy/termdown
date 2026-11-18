@@ -19,16 +19,16 @@ final class AgentSkillTests: XCTestCase {
       at: home.appendingPathComponent(name), withIntermediateDirectories: true)
   }
 
-  func skillFile(_ parent: String) -> URL {
-    home.appendingPathComponent("\(parent)/skills/termdown/SKILL.md")
+  func skillFile(_ parent: String, _ skill: String = "termdown") -> URL {
+    home.appendingPathComponent("\(parent)/skills/\(skill)/SKILL.md")
   }
 
   func states(_ reports: [AgentSkillReport]) -> [AgentSkillState] { reports.map(\.state) }
 
-  func writeSkill(_ parent: String, _ content: String) throws {
+  func writeSkill(_ parent: String, _ content: String, skill: String = "termdown") throws {
     try FileManager.default.createDirectory(
-      at: skillFile(parent).deletingLastPathComponent(), withIntermediateDirectories: true)
-    try content.write(to: skillFile(parent), atomically: true, encoding: .utf8)
+      at: skillFile(parent, skill).deletingLastPathComponent(), withIntermediateDirectories: true)
+    try content.write(to: skillFile(parent, skill), atomically: true, encoding: .utf8)
   }
 
   var outdatedStub: String {
@@ -60,9 +60,20 @@ final class AgentSkillTests: XCTestCase {
     XCTAssertTrue(agentGuide.contains("`termdown open` does not start a review."))
   }
 
-  func testStubTriggersOnReviewRequests() {
-    XCTAssertTrue(agentStub.contains("review, mark up or send passes"))
-    XCTAssertTrue(agentStub.contains("\"in termdown\""))
+  func testTheOpenSkillHandsReviewsToTheReviewSkill() {
+    XCTAssertTrue(agentStub.contains("use the termdown-review skill instead"))
+    XCTAssertFalse(agentStub.contains("runs the interactive review"))
+  }
+
+  func testTheReviewSkillCarriesTheStartProcedureItself() {
+    XCTAssertTrue(agentReviewStub.hasPrefix("---\nname: termdown-review\ndescription: "))
+    XCTAssertEqual(stubVersion(of: agentReviewStub), agentStubVersion)
+    XCTAssertTrue(agentReviewStub.contains("review, mark up or send passes"))
+    XCTAssertTrue(agentReviewStub.contains("Run `termdown review --check FILE`"))
+    XCTAssertTrue(agentReviewStub.contains("Do what `NEXT:` says."))
+    XCTAssertTrue(agentReviewStub.contains("`termdown agent-guide review`"))
+    XCTAssertTrue(agentReviewStub.contains("do not open a browser review, run review.py"))
+    XCTAssertEqual(agentSkillStubs.map(\.name), ["termdown", "termdown-review"])
   }
 
   func testReviewGuideStartsWithThePreflightAndNamesNothingOutsideTermdown() {
@@ -86,7 +97,7 @@ final class AgentSkillTests: XCTestCase {
     XCTAssertTrue(
       agentGuide.contains(
         "If a write is refused because the file changed, re-read it and never overwrite the user's saved changes."))
-    XCTAssertEqual(agentStubVersion, "2")
+    XCTAssertEqual(agentStubVersion, "3")
   }
 
   func testGuideTellsAgentsToAskForIDEWhenNotConnected() {
@@ -100,12 +111,16 @@ final class AgentSkillTests: XCTestCase {
     XCTAssertNil(stubVersion(of: "no frontmatter"))
   }
 
-  func testInstallWritesOnlyWhereParentExists() throws {
+  func testInstallWritesBothSkillsOnlyWhereParentExists() throws {
     try makeParent(".claude")
     try makeParent(".cursor")
     let reports = try AgentSkills(home: home).install()
-    XCTAssertEqual(states(reports), [.installed, .skipped, .installed])
+    XCTAssertEqual(
+      reports.map(\.skill),
+      ["termdown", "termdown-review", "termdown", "termdown-review", "termdown", "termdown-review"])
+    XCTAssertEqual(states(reports), [.installed, .installed, .skipped, .skipped, .installed, .installed])
     XCTAssertEqual(try String(contentsOf: skillFile(".claude"), encoding: .utf8), agentStub)
+    XCTAssertEqual(try String(contentsOf: skillFile(".claude", "termdown-review"), encoding: .utf8), agentReviewStub)
     XCTAssertFalse(FileManager.default.fileExists(atPath: home.appendingPathComponent(".agents").path))
   }
 
@@ -113,22 +128,22 @@ final class AgentSkillTests: XCTestCase {
     try makeParent(".agents")
     let skills = AgentSkills(home: home)
     _ = try skills.install()
-    XCTAssertEqual(states(try skills.install()), [.skipped, .current, .skipped])
+    XCTAssertEqual(states(try skills.install()), [.skipped, .skipped, .current, .current, .skipped, .skipped])
   }
 
   func testInstallRefusesForeignFile() throws {
     try makeParent(".claude")
-    try writeSkill(".claude", "mine")
-    XCTAssertEqual(states(try AgentSkills(home: home).install()).first, .foreign)
-    XCTAssertEqual(try String(contentsOf: skillFile(".claude"), encoding: .utf8), "mine")
+    try writeSkill(".claude", "mine", skill: "termdown-review")
+    XCTAssertEqual(Array(states(try AgentSkills(home: home).install()).prefix(2)), [.installed, .foreign])
+    XCTAssertEqual(try String(contentsOf: skillFile(".claude", "termdown-review"), encoding: .utf8), "mine")
   }
 
-  func testInstallUpgradesOutdatedStub() throws {
+  func testInstallUpgradesAnOutdatedStubAndAddsTheReviewSkill() throws {
     try makeParent(".claude")
     try writeSkill(".claude", outdatedStub)
     let skills = AgentSkills(home: home)
-    XCTAssertEqual(states(skills.status()).first, .outdated)
-    XCTAssertEqual(states(try skills.install()).first, .installed)
+    XCTAssertEqual(Array(states(skills.status()).prefix(2)), [.outdated, .missing])
+    XCTAssertEqual(Array(states(try skills.install()).prefix(2)), [.installed, .installed])
     XCTAssertEqual(try String(contentsOf: skillFile(".claude"), encoding: .utf8), agentStub)
   }
 
@@ -137,18 +152,19 @@ final class AgentSkillTests: XCTestCase {
     try makeParent(".agents")
     try makeParent(".cursor")
     let skills = AgentSkills(home: home)
-    XCTAssertEqual(states(skills.status()), [.missing, .missing, .missing])
+    XCTAssertEqual(Set(states(skills.status())), [.missing])
     _ = try skills.install()
     try writeSkill(".agents", "mine")
-    try writeSkill(".cursor", outdatedStub)
+    try writeSkill(".cursor", outdatedStub, skill: "termdown-review")
     let reports = skills.status()
-    XCTAssertEqual(states(reports), [.current, .foreign, .outdated])
+    XCTAssertEqual(states(reports), [.current, .current, .foreign, .current, .current, .outdated])
     XCTAssertEqual(agentStatusExitCode(reports), 1)
   }
 
   func testStatusSkippedWhenNoAgentsInstalled() {
     let reports = AgentSkills(home: home).status()
-    XCTAssertEqual(states(reports), [.skipped, .skipped, .skipped])
+    XCTAssertEqual(reports.count, 6)
+    XCTAssertEqual(Set(states(reports)), [.skipped])
     XCTAssertEqual(agentStatusExitCode(reports), 0)
   }
 
@@ -158,24 +174,29 @@ final class AgentSkillTests: XCTestCase {
     let skills = AgentSkills(home: home)
     _ = try skills.install()
     try writeSkill(".agents", "mine")
-    XCTAssertEqual(states(try skills.remove()), [.missing, .foreign, .skipped])
+    XCTAssertEqual(states(try skills.remove()), [.missing, .missing, .foreign, .missing, .skipped, .skipped])
     XCTAssertFalse(
       FileManager.default.fileExists(atPath: skillFile(".claude").deletingLastPathComponent().path))
+    XCTAssertFalse(
+      FileManager.default.fileExists(
+        atPath: skillFile(".claude", "termdown-review").deletingLastPathComponent().path))
     XCTAssertEqual(try String(contentsOf: skillFile(".agents"), encoding: .utf8), "mine")
   }
 
   func testStatusLinesNameDirectoryAndAgents() throws {
     try makeParent(".cursor")
     let lines = agentStatusLines(AgentSkills(home: home).status())
-    XCTAssertEqual(lines.count, 3)
-    XCTAssertTrue(lines[2].hasPrefix("missing "))
-    XCTAssertTrue(lines[2].hasSuffix("/.cursor/skills/termdown (cursor-agent)"))
+    XCTAssertEqual(lines.count, 6)
+    XCTAssertTrue(lines[5].hasPrefix("missing "))
+    XCTAssertTrue(lines[4].hasSuffix("/.cursor/skills/termdown (cursor-agent)"))
+    XCTAssertTrue(lines[5].hasSuffix("/.cursor/skills/termdown-review (cursor-agent)"))
   }
 
-  func report(_ parent: String, _ state: AgentSkillState) -> AgentSkillReport {
+  func report(_ parent: String, _ state: AgentSkillState, skill: String = "termdown") -> AgentSkillReport {
     let target = agentSkillTargets.first { $0.parent == parent }!
     return AgentSkillReport(
-      target: target, state: state, directory: home.appendingPathComponent(target.relativeDirectory))
+      target: target, skill: skill, state: state,
+      directory: home.appendingPathComponent(target.relativeDirectory(skill)))
   }
 
   func testNamesPickTargets() throws {
@@ -196,8 +217,8 @@ final class AgentSkillTests: XCTestCase {
     try makeParent(".claude")
     try makeParent(".cursor")
     let reports = try AgentSkills(home: home, targets: agentSkillTargets(named: ["cursor"])).install()
-    XCTAssertEqual(reports.map(\.target.parent), [".cursor"])
-    XCTAssertEqual(states(reports), [.installed])
+    XCTAssertEqual(reports.map(\.target.parent), [".cursor", ".cursor"])
+    XCTAssertEqual(states(reports), [.installed, .installed])
     XCTAssertFalse(FileManager.default.fileExists(atPath: skillFile(".claude").path))
   }
 
@@ -208,11 +229,14 @@ final class AgentSkillTests: XCTestCase {
   }
 
   func testOfferQuestionNamesEachAgentAndWhereItGoes() {
-    let question = agentOfferQuestion([report(".claude", .missing), report(".cursor", .outdated)], home: home.path)
+    let question = agentOfferQuestion([
+      report(".claude", .outdated), report(".claude", .missing, skill: "termdown-review"),
+      report(".cursor", .missing, skill: "termdown-review"),
+    ])
     XCTAssertEqual(
       question,
-      "Teach these coding agents to use termdown?\n  Claude Code  (~/.claude/skills/termdown)\n"
-        + "  cursor-agent  (~/.cursor/skills/termdown)\n[Y/n] ")
+      "Teach these coding agents to use termdown?\n  Claude Code  (~/.claude/skills: termdown, termdown-review)\n"
+        + "  cursor-agent  (~/.cursor/skills: termdown-review)\n[Y/n] ")
   }
 
   func testOfferEnterOrYesInstalls() {
