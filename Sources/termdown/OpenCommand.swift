@@ -89,6 +89,23 @@ enum OpenCommand {
     }
   }
 
+  /// The previews in the caller's own tab ($REX_BLOCK's window), or nil when that tab cannot be read. Only this tab
+  /// counts: a preview elsewhere is never the one beside the caller.
+  static func callerTabPreviews() -> [PreviewPane]? {
+    guard let block = ProcessInfo.processInfo.environment[callerBlockVariable], !block.isEmpty else { return nil }
+    let runner = ProcessRunner()
+    let paths = currentPaths()
+    let config = try? ConfigStore.load(paths)
+    guard let rex = config?.rexPath ?? locateExecutable("rex"),
+      let inspect = try? rexJSON(runner, rex, ["block", "inspect", block, "--json"]),
+      let target = callerTarget(blockInspectJSON: inspect), let window = target.window,
+      let blocks = try? rexJSON(runner, rex, ["block", "ls", "-s", target.session, "--json"])
+    else { return nil }
+    return reachablePreviews(previewBlocks(blockListJSON: blocks, window: window)) {
+      ViewerSocketClient.query(paths.viewerSocket(block: $0))
+    }
+  }
+
   private static func focusedTarget(_ runner: ProcessRunning, _ rex: String) throws -> PaneTarget {
     let clients = try rexJSON(runner, rex, ["client", "ls", "--json"])
     let sessions = try rexJSON(runner, rex, ["ls", "--json"])

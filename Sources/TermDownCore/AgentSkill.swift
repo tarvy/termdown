@@ -1,6 +1,6 @@
 import Foundation
 
-public let agentStubVersion = "3"
+public let agentStubVersion = "4"
 public let agentStubMarkerKey = "termdown-stub"
 
 public let agentStub = """
@@ -11,6 +11,11 @@ public let agentStub = """
     \(agentStubMarkerKey): "\(agentStubVersion)"
   ---
   <!-- Installed by "termdown agents install". Remove it with "termdown agents remove". -->
+
+  Your own pane only. Run `rex whoami --json` first; $REX_SESSION and $REX_BLOCK name your session and pane. Run
+  termdown from your own shell, so the preview opens in your tab beside your pane. Never pick, attach to or reason
+  from a TermDown pane in another tab or session, and never say a file is open in TermDown from memory or because
+  some termdown pane exists: `termdown review --check FILE` must print `PREVIEW: here` first.
 
   Run `termdown agent-guide` and follow the guide it prints. The guide comes from
   the installed termdown, so it describes the behavior of that version.
@@ -31,10 +36,19 @@ public let agentReviewStub = """
 
   FILE is the draft: the path given with this skill, or the Markdown draft you just wrote for the user.
 
+  Your own pane only. Run `rex whoami --json` first; $REX_SESSION and $REX_BLOCK name your session and pane. Run
+  termdown from your own shell, so the preview opens in your tab beside your pane. Never pick, attach to or reason
+  from a TermDown pane in another tab or session, and never say a file is open in TermDown from memory or because
+  some termdown pane exists: `termdown review --check FILE` must print `PREVIEW: here` first.
+
   To start a review:
-  1. Run `termdown review --check FILE`. It prints `REVIEW:` and `NEXT:` lines. Do what `NEXT:` says.
-  2. After `termdown review FILE`, tell the user in one line that the draft is open for review in TermDown, then
-     end your turn. Each pass arrives later as a message.
+  1. Run `termdown review --check FILE`. It prints `REVIEW:`, `PREVIEW:`, `CONNECTED:` and `NEXT:` lines. Do what
+     `NEXT:` says.
+  2. After `termdown review FILE`, run the check again: only with `PREVIEW: here` may you tell the user, in one line,
+     that the draft is open for review in the preview beside them.
+  3. If `CONNECTED:` is not `yes`, prefill `/ide` in your own prompt as the last thing you do:
+     `rex send -b "$REX_BLOCK" "/ide"`, with no newline, and tell the user to press Enter and pick the termdown
+     preview. Never press Enter or pick for them. Then end your turn. Each pass arrives later as a message.
 
   To apply a pass (a message starting `Review pass N on @<draft>`), and for what each mark asks for, run
   `termdown agent-guide review` and follow it.
@@ -60,6 +74,12 @@ public let agentGuide = """
   - "review", "mark up", "send passes", "interactive review", or a message starting `Review pass`: run `termdown agent-guide review` and follow it. TermDown is the only reviewer; never start another one.
   - "open", "show", "preview", or you just wrote a deliverable: `termdown open FILE`, below.
   - "pair", "connect", highlights not arriving: see Pairing with agents, below.
+
+  Your own pane:
+  - Start with `rex whoami --json`. $REX_SESSION and $REX_BLOCK name your session and your pane; that pane's tab is the only one you work in.
+  - Run `termdown open FILE` or `termdown review FILE` from your own shell. The preview opens in your tab, beside your pane, or reuses a preview of that file already in your tab.
+  - Never pick, attach to or reason from TermDown panes in other tabs or sessions. A termdown pane somewhere else is not your preview, even when it shows the same file.
+  - Never say a file is open in TermDown from memory, or because some termdown pane exists. Run `termdown review --check FILE` (it changes nothing): only `PREVIEW: here` means a preview of FILE is in your tab. If it says `none`, open one.
 
   When to open a preview:
   - After writing or substantially updating a Markdown file meant for the user: plans, reports, design docs, READMEs.
@@ -87,7 +107,7 @@ public let agentGuide = """
 
   Pairing with agents:
   - Each preview is an IDE that Claude Code can connect to; text the user highlights in it reaches the agents it is paired with. By default a preview pairs with the agent in the pane that opened it, but only once that session is connected to it. Claude Code connects when a session starts (`termdown claude`) or when the user runs `/ide`; a session that was already running when the preview opened stays unconnected.
-  - After `termdown open`, if your session isn't connected to a termdown preview (it wasn't started by `termdown claude` and didn't connect through `/ide`), tell the user once, next to the file path: "To send highlights from the preview to this session, run `/ide` and pick the termdown preview." Say the same if a preview you were connected to has closed. Never try to connect the session yourself.
+  - After opening, check `CONNECTED:` in `termdown review --check FILE`. If it is not `yes` (and this session was not started by `termdown claude`), prefill `/ide` in your own prompt as the last thing you do before ending your turn: `rex send -b "$REX_BLOCK" "/ide"`, with no newline. Then tell the user once, next to the file path: "Press Enter to run `/ide` and pick the termdown preview, so highlights from the preview reach this session." Say the same if a preview you were connected to has closed. Prefilling is the only help: never press Enter, pick from the `/ide` list, or send anything else to your prompt.
   - When the user wants a Claude Code session tied to one preview, suggest `termdown claude <file>` in a Rex pane: it opens the preview beside the pane and starts Claude Code connected to that preview only.
   - When the user asks to change which agent gets a preview's highlights, tell them to press A in the preview, or run Select agent from Rex's command palette (Cmd-Shift-P). `termdown config set agent-pairing opener|all|ask` changes the default.
 

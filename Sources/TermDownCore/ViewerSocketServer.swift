@@ -48,6 +48,7 @@ public final class ViewerStatus: @unchecked Sendable {
   private let openedAt: Double
   private let opener: String?
   private var file: URL?
+  private var agents: [String] = []
 
   public init(file: URL? = nil, opener: String?, openedAt: Double = Date().timeIntervalSince1970) {
     self.file = file
@@ -59,8 +60,13 @@ public final class ViewerStatus: @unchecked Sendable {
     lock.withLock { self.file = file }
   }
 
+  /// The Rex blocks of the agents now connected through `/ide`.
+  public func connectedAgents(_ blocks: [String]) {
+    lock.withLock { agents = blocks }
+  }
+
   public var state: ViewerState {
-    lock.withLock { ViewerState(file: file?.path, openedAt: openedAt, opener: opener) }
+    lock.withLock { ViewerState(file: file?.path, openedAt: openedAt, opener: opener, agents: agents) }
   }
 }
 

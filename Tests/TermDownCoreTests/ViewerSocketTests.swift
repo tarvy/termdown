@@ -72,11 +72,11 @@ final class ViewerSocketTests: XCTestCase {
     let server = try ViewerSocketServer(socket: sock, status: status) { _ in XCTFail("not an open message") }
     defer { server.close() }
     XCTAssertEqual(
-      ViewerSocketClient.query(sock), .answered(ViewerState(file: nil, openedAt: 42, opener: "block:caller")))
+      ViewerSocketClient.query(sock), .answered(ViewerState(file: nil, openedAt: 42, opener: "block:caller", agents: [])))
     status.show(URL(fileURLWithPath: "/tmp/a \"b\"\nc.md"))
     XCTAssertEqual(
       ViewerSocketClient.query(sock),
-      .answered(ViewerState(file: "/tmp/a \"b\"\nc.md", openedAt: 42, opener: "block:caller")))
+      .answered(ViewerState(file: "/tmp/a \"b\"\nc.md", openedAt: 42, opener: "block:caller", agents: [])))
     status.show(URL(fileURLWithPath: "/tmp/linked.md"))
     if case .answered(let state) = ViewerSocketClient.query(sock) {
       XCTAssertEqual(state.file, "/tmp/linked.md")
@@ -94,7 +94,7 @@ final class ViewerSocketTests: XCTestCase {
     defer { server.close() }
     XCTAssertEqual(
       ViewerSocketClient.query(sock),
-      .answered(ViewerState(file: "/tmp/requested.md", openedAt: 7, opener: "block:caller")))
+      .answered(ViewerState(file: "/tmp/requested.md", openedAt: 7, opener: "block:caller", agents: [])))
   }
 
   func testTheSocketAppearsOnlyOnceListeningAndReplacesAStaleFile() throws {

@@ -65,7 +65,12 @@ enum ViewCommand {
       rex: IDEBridge.RexPlacement(
         session: rexEnvironment["REX_SESSION"], block: rexEnvironment["REX_BLOCK"], opener: arguments.origin.opener),
       log: { log.write($0) })
-    ide.onAgentsChanged = { MainActor.assumeIsolated { host.agentsChanged() } }
+    ide.onAgentsChanged = {
+      MainActor.assumeIsolated {
+        status.connectedAgents(ide.agentState().agents.compactMap(\.block))
+        host.agentsChanged()
+      }
+    }
     host.ide = ide
     host.agentCommand = settings.agent
     ide.start()

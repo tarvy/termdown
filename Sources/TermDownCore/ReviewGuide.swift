@@ -9,15 +9,25 @@ public func reviewGuide(hotkeys: [ReviewHotkey] = ReviewHotkeys.load()) -> Strin
   return """
     termdown review: start a review of a draft, then apply each pass the user sends.
 
+    Your own pane. Start with `rex whoami --json`: $REX_SESSION and $REX_BLOCK name your session and pane, and only
+    that pane's tab counts. Run termdown from your own shell. Never pick, attach to or reason from a TermDown pane in
+    another tab or session, and never say a draft is open in TermDown from memory or because some termdown pane exists.
+
     Start a review. Only when the user asks to review, mark up or send passes on a draft:
-    1. Run `termdown review --check FILE`. It prints one `REVIEW:` line and a `NEXT:` line. Follow `NEXT:`.
-       - `REVIEW: READY`: run `termdown review FILE`, then end your turn.
-       - `REVIEW: LOCKED`: the draft is already open for review in TermDown. Tell the user in one line and stop.
+    1. Run `termdown review --check FILE`. It judges only your own tab and prints `REVIEW:`, `PREVIEW:` (here, none or
+       unknown), `CONNECTED:` (yes, no or unknown: whether your pane is connected to that preview) and `NEXT:`.
+       Follow `NEXT:`.
+       - `REVIEW: READY`: run `termdown review FILE` from your own shell.
+       - `REVIEW: OPEN`: the draft is already under review in the preview beside you. Do not start another.
+       - `REVIEW: LOCKED`: a preview in another tab or session is reviewing it. Tell the user and ask them to end that
+         review or close that preview. Never say it is open beside them.
        - `REVIEW: NO_REX` or `REVIEW: NO_FILE`: tell the user which, give the file path, and carry on without a review.
-    2. Tell the user once, in one line, that the draft is open for review in TermDown. If this session is not connected
-       to the preview, add: "To send passes from the preview to this session, run `/ide` and pick the termdown
-       preview." Never try to connect the session yourself.
-    3. End your turn. Each pass arrives later as a message.
+    2. After `termdown review FILE`, run the check again. Only with `PREVIEW: here` may you tell the user, in one line,
+       that the draft is open for review in the preview beside them.
+    3. If `CONNECTED:` is not `yes` (and this session was not started by `termdown claude`), prefill `/ide` in your
+       own prompt as the last thing you do: `rex send -b "$REX_BLOCK" "/ide"`, with no newline. Tell the user to press
+       Enter and pick the termdown preview, so passes reach this session. Never press Enter or pick for them.
+    4. End your turn. Each pass arrives later as a message.
     - Never run a second reviewer, a browser page or a script for the same draft. TermDown is the only reviewer.
     - Use `termdown open FILE`, not `review`, when the user only wants to look at a file.
 
