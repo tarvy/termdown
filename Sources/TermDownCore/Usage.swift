@@ -14,7 +14,9 @@ public let commandUsage = """
     review [--check] <file>
                   Open the file's preview with review on: mark the draft up and
                   send each pass to the connected Claude Code session. --check
-                  prints READY, LOCKED, NO_REX or NO_FILE and changes nothing.
+                  judges only this pane's tab: READY, OPEN, LOCKED, NO_REX or
+                  NO_FILE, whether a preview here shows the file, and whether
+                  this pane's agent is connected to it. It changes nothing.
     claude [<file>] [-- <agent arguments>]
                   Start Claude Code (the agent setting) in this pane, connected
                   to the preview this pane opened, or to <file>'s new preview.

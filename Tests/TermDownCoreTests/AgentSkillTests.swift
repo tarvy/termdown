@@ -70,7 +70,7 @@ final class AgentSkillTests: XCTestCase {
     XCTAssertEqual(stubVersion(of: agentReviewStub), agentStubVersion)
     XCTAssertTrue(agentReviewStub.contains("review, mark up or send passes"))
     XCTAssertTrue(agentReviewStub.contains("Run `termdown review --check FILE`"))
-    XCTAssertTrue(agentReviewStub.contains("Do what `NEXT:` says."))
+    XCTAssertTrue(agentReviewStub.contains("`NEXT:` says."))
     XCTAssertTrue(agentReviewStub.contains("`termdown agent-guide review`"))
     XCTAssertTrue(agentReviewStub.contains("do not open a browser review, run review.py"))
     XCTAssertEqual(agentSkillStubs.map(\.name), ["termdown", "termdown-review"])
@@ -79,7 +79,9 @@ final class AgentSkillTests: XCTestCase {
   func testReviewGuideStartsWithThePreflightAndNamesNothingOutsideTermdown() {
     let guide = reviewGuide()
     XCTAssertTrue(guide.contains("Run `termdown review --check FILE`"))
-    XCTAssertTrue(guide.contains("`REVIEW: READY`: run `termdown review FILE`, then end your turn."))
+    XCTAssertTrue(guide.contains("`REVIEW: READY`: run `termdown review FILE` from your own shell."))
+    XCTAssertTrue(guide.contains("`REVIEW: OPEN`"))
+    XCTAssertTrue(guide.contains("Never say it is open beside them."))
     XCTAssertTrue(guide.contains("Never run a second reviewer, a browser page or a script for the same draft."))
     XCTAssertTrue(guide.contains("`col_to` belongs to `end_line`, not to `line`"))
     XCTAssertFalse(guide.contains("review.py"))
@@ -97,13 +99,33 @@ final class AgentSkillTests: XCTestCase {
     XCTAssertTrue(
       agentGuide.contains(
         "If a write is refused because the file changed, re-read it and never overwrite the user's saved changes."))
-    XCTAssertEqual(agentStubVersion, "3")
+    XCTAssertEqual(agentStubVersion, "4")
   }
 
   func testGuideTellsAgentsToAskForIDEWhenNotConnected() {
-    XCTAssertTrue(agentGuide.contains("run `/ide` and pick the termdown preview"))
-    XCTAssertTrue(agentGuide.contains("Never try to connect the session yourself"))
+    XCTAssertTrue(agentGuide.contains("Press Enter to run `/ide` and pick the termdown preview"))
+    XCTAssertTrue(agentGuide.contains("never press Enter, pick from the `/ide` list"))
     XCTAssertFalse(agentGuide.contains("so a preview you open sends its highlights to you"))
+  }
+
+  func testEveryAgentTextKeepsTheAgentInItsOwnPane() {
+    for (name, text) in [("stub", agentStub), ("review stub", agentReviewStub), ("guide", agentGuide), ("review guide", reviewGuide())] {
+      XCTAssertTrue(text.contains("`rex whoami --json`"), name)
+      XCTAssertTrue(text.contains("$REX_BLOCK"), name)
+      XCTAssertTrue(text.contains("from your own shell"), name)
+      XCTAssertTrue(text.contains("another tab or session") || text.contains("other tabs or sessions"), name)
+      XCTAssertTrue(text.contains("from memory"), name)
+    }
+    for (name, text) in [("stub", agentStub), ("review stub", agentReviewStub), ("guide", agentGuide), ("review guide", reviewGuide())] {
+      XCTAssertTrue(text.contains("`PREVIEW: here`"), name)
+    }
+  }
+
+  func testIdeIsPrefilledInYourOwnPromptWithoutANewline() {
+    for (name, text) in [("review stub", agentReviewStub), ("guide", agentGuide), ("review guide", reviewGuide())] {
+      XCTAssertTrue(text.contains(#"`rex send -b "$REX_BLOCK" "/ide"`, with no newline"#), name)
+      XCTAssertTrue(text.contains("`CONNECTED:`"), name)
+    }
   }
 
   func testStubVersionRejectsForeignContent() {

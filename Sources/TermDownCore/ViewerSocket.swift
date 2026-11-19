@@ -182,17 +182,21 @@ public struct ViewerState: Codable, Equatable, Sendable {
   public var file: String?
   public var openedAt: Double
   public var opener: String?
+  /// The Rex blocks of the agents connected to this preview through `/ide`. Nil from a viewer too old to say.
+  public var agents: [String]?
 
-  public init(file: String?, openedAt: Double, opener: String?) {
+  public init(file: String?, openedAt: Double, opener: String?, agents: [String]? = nil) {
     self.file = file
     self.openedAt = openedAt
     self.opener = opener
+    self.agents = agents
   }
 
   enum CodingKeys: String, CodingKey {
     case file
     case openedAt = "opened_at"
     case opener
+    case agents
   }
 }
 

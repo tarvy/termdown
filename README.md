@@ -198,6 +198,8 @@ Review turns a preview into a markup surface for a draft you are working on with
 
 **From the agent.** Run `/termdown-review FILE` in Claude Code, or ask the agent to review the draft in TermDown. The agent runs `termdown review FILE` to start a review of a draft it wrote. It opens the preview, or reuses the one already showing the file, and turns review on. If no session is connected yet, review starts when one connects. If review is already on for that file, nothing changes and the bar says `Review is already on`. If the preview is showing a different file and you have unsent marks, you are asked before it switches.
 
+**Own pane only.** An agent works only in the tab of its own pane (`$REX_BLOCK`, shown by `rex whoami --json`) and runs termdown from its own shell, so the preview opens beside it. `termdown review --check FILE` judges that tab alone and changes nothing. It prints `REVIEW:` (`READY`; `OPEN`, under review in a preview in this tab; `LOCKED`, under review in a preview in another tab or session; `NO_REX`; `NO_FILE`), `PREVIEW:` (`here` when a preview in this tab shows the file, `none`, or `unknown`), `CONNECTED:` (whether this pane's agent is connected to that preview through `/ide`) and the `NEXT:` step. Agents say a draft is open only after it prints `PREVIEW: here`. When `CONNECTED:` is not `yes`, the agent types `/ide` into its own prompt without sending it, so you press Enter and pick the termdown preview.
+
 ## Commands
 
 ### Setup

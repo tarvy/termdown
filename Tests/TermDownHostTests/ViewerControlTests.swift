@@ -27,7 +27,7 @@ final class ViewerControlTests: XCTestCase {
       answered.signal()
     }
     XCTAssertEqual(answered.wait(timeout: .now() + 3), .success, "the main thread stays busy, as during layout")
-    XCTAssertEqual(probe, .answered(ViewerState(file: file.path, openedAt: 3, opener: "block:caller")))
+    XCTAssertEqual(probe, .answered(ViewerState(file: file.path, openedAt: 3, opener: "block:caller", agents: [])))
   }
 
   func testOpensAndThemeChangesDuringStartupAreAppliedOnceTheHostExists() throws {

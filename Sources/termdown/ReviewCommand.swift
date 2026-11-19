@@ -11,10 +11,13 @@ enum ReviewCommand {
       fail(error.description, status: 64)
     case .success(let review) where review.check:
       let file = URL(fileURLWithPath: review.file).standardizedFileURL
+      let environment = ProcessInfo.processInfo.environment
+      let ownTab = ownTabPreview(
+        file: file.path, previews: OpenCommand.callerTabPreviews(), callerBlock: environment[callerBlockVariable])
       let check = ReviewCheck(
         file: file.path, fileExists: FileManager.default.fileExists(atPath: file.path),
-        rexSession: ProcessInfo.processInfo.environment["REX_SESSION"],
-        reviewIsLive: ReviewStore(draft: file).reviewIsLive())
+        rexSession: environment["REX_SESSION"], reviewIsLive: ReviewStore(draft: file).reviewIsLive(),
+        previewHere: ownTab.here, connected: ownTab.connected)
       print(check.text, terminator: "")
       exit(check.status)
     case .success(let review):
